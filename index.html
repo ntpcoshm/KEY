@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>車輛鑰匙領用系統</title>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  
+  <style>
+    body { font-family: '微軟正黑體', sans-serif; background-color: #f4f5f7; margin: 0; padding: 20px; }
+    .container { max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    h2 { text-align: center; color: #333; margin-bottom: 5px; }
+    .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
+    .section { display: none; }
+    input, select, button { width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
+    select, input { border: 1px solid #ccc; }
+    select option:disabled { color: #999; background-color: #eee; }
+    .btn-submit { background-color: #0056b3; color: white; border: none; font-weight: bold; margin-top: 15px; }
+    .btn-borrow { background-color: #00B900; color: white; border: none; font-weight: bold; margin-top: 15px; }
+    .borrow-section { padding-bottom: 15px; border-bottom: 2px dashed #eee; margin-bottom: 15px; }
+    .my-keys-title { font-size: 16px; color: #555; font-weight: bold; margin-bottom: 10px; }
+    .key-card { background: #eef2ff; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #c7d2fe; }
+    .key-info { display: flex; flex-direction: column; }
+    .key-vehicle { font-size: 18px; font-weight: bold; color: #333; }
+    .key-time { font-size: 14px; color: #0056b3; margin-top: 5px; }
+    .btn-return-small { background-color: #ff4d4d; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-weight: bold; width: auto; margin: 0; }
+    #loading { text-align: center; color: #666; font-size: 16px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>鑰匙領用紀錄</h2>
+  <div class="subtitle" id="greeting">讀取身分中...</div>
+  <div id="loading">連線資料庫中，請稍候...</div>
+
+  <!-- 註冊綁定畫面 (28區選單) -->
+  <div id="register-section" class="section">
+    <label style="color:#e74c3c; font-weight:bold; font-size:14px;">⚠️ 系統查無您的身分，請先完成綁定</label>
+    <select id="regDistrict">
+      <option value="">-- 請選擇所屬區隊 --</option>
+      <option value="板橋區">板橋區</option><option value="三重區">三重區</option><option value="中和區">中和區</option>
+      <option value="永和區">永和區</option><option value="新莊區">新莊區</option><option value="新店區">新店區</option>
+      <option value="樹林區">樹林區</option><option value="鶯歌區">鶯歌區</option><option value="三峽區">三峽區</option>
+      <option value="淡水區">淡水區</option><option value="汐止區">汐止區</option><option value="瑞芳區">瑞芳區</option>
+      <option value="土城區">土城區</option><option value="蘆洲區">蘆洲區</option><option value="五股區">五股區</option>
+      <option value="泰山區">泰山區</option><option value="林口區">林口區</option><option value="深坑區">深坑區</option>
+      <option value="石碇區">石碇區</option><option value="坪林區">坪林區</option><option value="三芝區">三芝區</option>
+      <option value="石門區">石門區</option><option value="八里區">八里區</option><option value="平溪區">平溪區</option>
+      <option value="雙溪區">雙溪區</option><option value="貢寮區">貢寮區</option><option value="金山區">金山區</option>
+      <option value="萬里區">萬里區</option>
+    </select>
+    <input type="text" id="regName" placeholder="請輸入真實姓名">
+    <button class="btn-submit" onclick="registerUser()">送出綁定</button>
+  </div>
+
+  <!-- 主畫面 -->
+  <div id="main-content" class="section">
+    <div class="borrow-section">
+      <label for="vehicleSelect" style="color:#555; font-weight:bold;">取用新鑰匙：</label>
+      <select id="vehicleSelect">
+        <option value="">-- 請選擇車號 --</option>
+      </select>
+      <button class="btn-borrow" onclick="borrowKey()">確定取用</button>
+    </div>
+
+    <div class="my-keys-title">我目前借用的鑰匙 (<span id="keyCount">0</span>把)</div>
+    <div id="myKeysContainer"></div>
+  </div>
+</div>
+
+<script>
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbwaMEXpbBWsox-FcihRcpF7V_uZ3zfaR8lxAfr45Dg5O5GhYWzOS2hyDWc6aZSR1RNt/exec"; 
+  const LIFF_ID = "2011658008-KBNlpzVl"; 
+  
+  let userProfile = { uid: "", name: "", district: "" };
+  let timerInterval = null;
+  let activeKeysData = [];
+
+  window.onload = function() {
+    liff.init({ liffId: LIFF_ID }).then(() => {
+      if (!liff.isLoggedIn()) { liff.login(); } 
+      else {
+        liff.getProfile().then(profile => {
+          userProfile.uid = profile.userId;
+          checkStatus();
+        });
+      }
+    });
+  };
+
+  function checkStatus() {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('main-content').style.display = 'none';
+    document.getElementById('register-section').style.display = 'none';
+    clearInterval(timerInterval);
+
+    fetch(GAS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ action: "getKeyStatus", uid: userProfile.uid })
+    })
+    .then(response => response.json())
+    .then(data => {
+      document.getElementById('loading').style.display = 'none';
+      
+      if (data.error) {
+        return Swal.fire('錯誤', data.error, 'error');
+      }
+      if (!data.isRegistered) {
+        document.getElementById('register-section').style.display = 'block';
+        document.getElementById('greeting').innerText = "未綁定身分";
+        return;
+      }
+
+      userProfile.name = data.userName;
+      userProfile.district = data.district;
+      document.getElementById('greeting').innerText = `${userProfile.district} ${userProfile.name}，您好`;
+      document.getElementById('main-content').style.display = 'block';
+      
+      // 動態接收 GAS 傳來的該區車輛清單
+      renderVehicleOptions(data.vehicleList || [], data.borrowedVehicles || []);
+      renderMyKeys(data.myKeys || []);
+    })
+    .catch(err => Swal.fire('錯誤', '網路連線異常，請重試', 'error'));
+  }
+
+  function registerUser() {
+    const district = document.getElementById('regDistrict').value;
+    const name = document.getElementById('regName').value.trim();
+    if (!district) return Swal.fire('提醒', '請選擇所屬區隊', 'warning');
+    if (!name) return Swal.fire('提醒', '請填寫真實姓名', 'warning');
+
+    Swal.fire({ title: '綁定中...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    fetch(GAS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ action: "registerUser", uid: userProfile.uid, name: name, district: district })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        Swal.fire('成功', data.message, 'success').then(() => checkStatus());
+      } else {
+        Swal.fire('失敗', data.message, 'error');
+      }
+    });
+  }
+
+  function renderVehicleOptions(vehicleList, borrowedList) {
+    const select = document.getElementById('vehicleSelect');
+    select.innerHTML = '<option value="">-- 請選擇車號 --</option>';
+
+    vehicleList.forEach(vehicleNo => {
+      const borrowedInfo = borrowedList.find(v => v.vehicleNo === vehicleNo);
+      const option = document.createElement('option');
+      option.value = vehicleNo;
+      
+      if (borrowedInfo) {
+        option.text = `${vehicleNo} (已被 ${borrowedInfo.borrower} 取用)`;
+        option.disabled = true;
+      } else {
+        option.text = vehicleNo;
+      }
+      select.appendChild(option);
+    });
+  }
+
+  function renderMyKeys(myKeys) {
+    activeKeysData = myKeys;
+    document.getElementById('keyCount').innerText = myKeys.length;
+    const container = document.getElementById('myKeysContainer');
+    
+    if (myKeys.length === 0) {
+      container.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">您目前沒有借用鑰匙</div>';
+      return;
+    }
+
+    let htmlString = "";
+    myKeys.forEach((key, index) => {
+      htmlString += `
+        <div class="key-card">
+          <div class="key-info">
+            <span class="key-vehicle">${key.vehicleNo}</span>
+            <span class="key-time" id="timer-${index}">00:00:00</span>
+          </div>
+          <button class="btn-return-small" onclick="returnKey(${key.rowIndex}, '${key.vehicleNo}')">歸還</button>
+        </div>
+      `;
+    });
+    container.innerHTML = htmlString;
+    startMultiTimers();
+  }
+
+  function borrowKey() {
+    const vehicleNo = document.getElementById('vehicleSelect').value;
+    if (!vehicleNo) return Swal.fire('提醒', '請先選擇車號！', 'warning');
+
+    Swal.fire({ title: '處理中...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    fetch(GAS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        action: "borrowKey", uid: userProfile.uid, name: userProfile.name, district: userProfile.district, vehicleNo: vehicleNo
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        Swal.fire('成功', data.message, 'success').then(() => checkStatus());
+      } else {
+        Swal.fire('失敗', data.message, 'error');
+      }
+    });
+  }
+
+  function returnKey(rowIndex, vehicleNo) {
+    Swal.fire({
+      title: `歸還 ${vehicleNo}？`,
+      text: "請確認已將鑰匙放回櫃內",
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: '確定歸還'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({ title: '處理中...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        fetch(GAS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ action: "returnKey", district: userProfile.district, uid: userProfile.uid, rowIndex: rowIndex })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            Swal.fire('成功', data.message, 'success').then(() => checkStatus());
+          } else {
+            Swal.fire('失敗', data.message, 'error');
+          }
+        });
+      }
+    });
+  }
+
+  function startMultiTimers() {
+    function updateTimers() {
+      const now = new Date().getTime();
+      activeKeysData.forEach((key, index) => {
+        const borrowTime = new Date(key.borrowTime.replace(/-/g, '/')).getTime();
+        const diff = now - borrowTime;
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        const format = num => num.toString().padStart(2, '0');
+        const timerElement = document.getElementById(`timer-${index}`);
+        if (timerElement) {
+          timerElement.innerText = `已借用 ${format(hours)}:${format(minutes)}:${format(seconds)}`;
+        }
+      });
+    }
+    updateTimers();
+    timerInterval = setInterval(updateTimers, 1000);
+  }
+</script>
+</body>
+</html>
