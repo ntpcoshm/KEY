@@ -8,24 +8,30 @@
   <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   
   <style>
-    body { font-family: '微軟正黑體', sans-serif; background-color: #f4f5f7; margin: 0; padding: 20px; }
-    .container { max-width: 400px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    h2 { text-align: center; color: #333; margin-bottom: 5px; }
-    .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 20px; }
+    body { font-family: '微軟正黑體', sans-serif; background-color: #f4f5f7; margin: 0; padding: 12px; }
+    .container { max-width: 440px; margin: 0 auto; background: white; padding: 20px 18px; border-radius: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    h2 { text-align: center; color: #222; font-size: 26px; margin-top: 0; margin-bottom: 8px; }
+    .subtitle { text-align: center; color: #444; font-size: 18px; font-weight: bold; margin-bottom: 22px; }
     .section { display: none; }
-    input, select, button { width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
-    select, input { border: 1px solid #ccc; }
+    label { font-size: 18px !important; display: block; margin-bottom: 4px; }
+    input, select, button { width: 100%; padding: 16px 14px; margin-top: 10px; border-radius: 10px; font-size: 20px; box-sizing: border-box; }
+    select, input { border: 2px solid #bbb; background-color: #fff; min-height: 56px; }
     select option:disabled { color: #999; background-color: #eee; }
-    .btn-submit { background-color: #0056b3; color: white; border: none; font-weight: bold; margin-top: 15px; }
-    .btn-borrow { background-color: #00B900; color: white; border: none; font-weight: bold; margin-top: 15px; }
-    .borrow-section { padding-bottom: 15px; border-bottom: 2px dashed #eee; margin-bottom: 15px; }
-    .my-keys-title { font-size: 16px; color: #555; font-weight: bold; margin-bottom: 10px; }
-    .key-card { background: #eef2ff; padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #c7d2fe; }
+    .btn-submit { background-color: #0056b3; color: white; border: none; font-weight: bold; font-size: 22px; margin-top: 18px; min-height: 58px; cursor: pointer; }
+    .btn-borrow { background-color: #00B900; color: white; border: none; font-weight: bold; font-size: 22px; margin-top: 18px; min-height: 58px; cursor: pointer; }
+    .borrow-section { padding-bottom: 22px; border-bottom: 2px dashed #ddd; margin-bottom: 22px; }
+    .my-keys-title { font-size: 20px; color: #333; font-weight: bold; margin-bottom: 12px; }
+    .key-card { background: #eef2ff; padding: 16px; border-radius: 10px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; border: 2px solid #c7d2fe; }
     .key-info { display: flex; flex-direction: column; }
-    .key-vehicle { font-size: 18px; font-weight: bold; color: #333; }
-    .key-time { font-size: 14px; color: #0056b3; margin-top: 5px; }
-    .btn-return-small { background-color: #ff4d4d; color: white; border: none; padding: 8px 15px; border-radius: 6px; font-weight: bold; width: auto; margin: 0; }
-    #loading { text-align: center; color: #666; font-size: 16px; margin-top: 20px; }
+    .key-vehicle { font-size: 22px; font-weight: bold; color: #222; }
+    .key-time { font-size: 16px; font-weight: bold; color: #0056b3; margin-top: 6px; }
+    .btn-return-small { background-color: #ff4d4d; color: white; border: none; padding: 14px 20px; border-radius: 8px; font-size: 19px; font-weight: bold; width: auto; min-width: 84px; margin: 0; cursor: pointer; flex-shrink: 0; }
+    #loading { text-align: center; color: #555; font-size: 20px; font-weight: bold; margin-top: 24px; }
+
+    /* 放大 SweetAlert2 彈出視窗的字體與按鈕 */
+    .swal2-title { font-size: 24px !important; }
+    .swal2-html-container { font-size: 18px !important; }
+    .swal2-confirm, .swal2-cancel { font-size: 19px !important; padding: 12px 24px !important; }
   </style>
 </head>
 <body>
